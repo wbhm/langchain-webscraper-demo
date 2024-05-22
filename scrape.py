@@ -16,13 +16,19 @@ def cleanUrl(url: str):
 
 
 def get_response_and_save(url: str):
-    response = requests.get(url)
-    if not os.path.exists("./scrape"):
-        os.mkdir("./scrape")
-    parsedUrl = cleanUrl(url)
-    with open("./scrape/" + parsedUrl + ".html", "wb") as f:
-        f.write(response.content)
-    return response
+    response=''
+    try:
+        response = requests.get(url)
+        if not os.path.exists("./scrape"):
+            os.mkdir("./scrape")
+        parsedUrl = cleanUrl(url)
+        with open("./scrape/" + parsedUrl + ".html", "w") as f:
+            try:
+                f.write(response.content.decode("utf-8"))
+            except:
+                return response
+    finally:
+        return response
 
 
 def scrape_links(
@@ -42,28 +48,32 @@ def scrape_links(
 
     sitemap[cleanedUrl] = siteUrl
     response = get_response_and_save(siteUrl)
-    soup = BeautifulSoup(response.content, "html.parser")
-    links = soup.find_all("a")
+    try:
+        if response:
+                soup = BeautifulSoup(response.content, "html.parser")
+                links = soup.find_all("a")
 
-    for link in links:
-        href = urlparse(link.get("href"))
-        if (href.netloc != origin and href.netloc != "") or (
-            href.scheme != "" and href.scheme != "https"
-        ):
-            continue
-        scrape_links(
-            href.scheme or "https",
-            href.netloc or origin,
-            href.path,
-            depth=depth - 1,
-            sitemap=sitemap,
-        )
-    return sitemap
+                for link in links:
+                    href = urlparse(link.get("href"))
+                    if (href.netloc != origin and href.netloc != "") or (
+                        href.scheme != "" and href.scheme != "https"
+                    ):
+                        continue
+                    scrape_links(
+                        href.scheme or "https",
+                        href.netloc or origin,
+                        href.path,
+                        depth=depth - 1,
+                        sitemap=sitemap,
+                    )
+    finally:
+        return sitemap
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
     url = urlparse(args.site)
+    print(url)
     sitemap = scrape_links(url.scheme, url.netloc, url.path, depth=args.depth)
     with open("./scrape/sitemap.json", "w") as f:
         f.write(json.dumps(sitemap))

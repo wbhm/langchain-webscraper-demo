@@ -59,6 +59,9 @@ retrieval_qa = ConversationalRetrievalChain(
 
 
 def predict(message, history):
+    print(message)
+    print(history)
+
     response = retrieval_qa.run({"question": message})
     print(response)
 
