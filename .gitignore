@@ -1,5 +1,7 @@
-scrape/
-chroma/
+archive
+scrape
+chroma
+venv
 .env
 .DS_Store
 .idea
