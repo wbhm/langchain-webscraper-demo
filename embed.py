@@ -1,5 +1,6 @@
 import os
-import json
+import re
+import xml.etree.ElementTree as ET
 
 from langchain.document_loaders import (
     BSHTMLLoader,
@@ -32,13 +33,15 @@ if __name__ == "__main__":
     documents = text_splitter.split_documents(data)
 
     # map sources from file directory to web source
-    with open("./scrape/sitemap.json", "r") as f:
-        sitemap = json.loads(f.read())
+    tree = ET.parse("./scrape/sitemap.xml")
+    root = tree.getroot()
 
     for document in documents:
-        document.metadata["source"] = sitemap[
-            document.metadata["source"].replace(".html", "").replace("scrape/", "")
-        ]
+        source = re.sub(r'scrape\\', '', document.metadata['source']).replace('.html', '').replace('_','.').replace('=','/').replace('ssl.','https://').rstrip('-')
+        #source = root.find(
+        #    f".//loc[text()='{metadata}"
+        #).text
+        document.metadata["source"] = source
 
     embedding_model = OpenAIEmbeddings(model="text-embedding-ada-002")
     db = Chroma.from_documents(documents, embedding_model, persist_directory="./chroma")
