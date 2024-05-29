@@ -1,6 +1,7 @@
 import os
 import re
-import xml.etree.ElementTree as ET
+import logging
+import concurrent.futures
 
 from langchain.document_loaders import (
     BSHTMLLoader,
@@ -12,37 +13,44 @@ from langchain.vectorstores import Chroma
 
 from dotenv import load_dotenv
 
-if __name__ == "__main__":
+def process_document(document, regex):
+    source = regex.sub('', document.metadata['source']).replace('ssl_','https://').replace('.html','').replace('_', '.').replace('=', '/').rstrip('-')
+    document.metadata["source"] = source
+    return document
+
+def main():
     load_dotenv()
-    if os.path.exists("./chroma"):
+    scrape_dir = os.getenv("SCRAPE_DIR", './scrape')
+    chroma_dir = os.getenv("CHROMA_DIR", './chroma')
+    if os.path.exists(chroma_dir):
         print("already embedded")
         exit(0)
+    try:
+        loader = DirectoryLoader(
+            scrape_dir,
+            glob="*.html",
+            loader_cls=BSHTMLLoader,
+            show_progress=True,
+            loader_kwargs={"get_text_separator": " "},
+        )
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=200,
+        )
+        data = loader.load()
+        documents = text_splitter.split_documents(data)
 
-    loader = DirectoryLoader(
-        "./scrape",
-        glob="*.html",
-        loader_cls=BSHTMLLoader,
-        show_progress=True,
-        loader_kwargs={"get_text_separator": " "},
-    )
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
-    )
-    data = loader.load()
-    documents = text_splitter.split_documents(data)
+        regex = re.compile(r'scrape\\')
 
-    # map sources from file directory to web source
-    tree = ET.parse("./scrape/sitemap.xml")
-    root = tree.getroot()
+        with concurrent.futures.ProcessPoolExecutor() as executor:
+            documents = list(executor.map(process_document, documents, [regex]*len(documents)))
 
-    for document in documents:
-        source = re.sub(r'scrape\\', '', document.metadata['source']).replace('.html', '').replace('_','.').replace('=','/').replace('ssl.','https://').rstrip('-')
-        #source = root.find(
-        #    f".//loc[text()='{metadata}"
-        #).text
-        document.metadata["source"] = source
+        embedding_model = OpenAIEmbeddings(model="text-embedding-ada-002")
+        db = Chroma.from_documents(documents, embedding_model, persist_directory=chroma_dir)
+        db.persist()
+    except Exception as e:
+        logging.error(f"An error has occurred: {e}")
 
-    embedding_model = OpenAIEmbeddings(model="text-embedding-ada-002")
-    db = Chroma.from_documents(documents, embedding_model, persist_directory="./chroma")
-    db.persist()
+
+if __name__ == "__main__":
+    main()
