@@ -79,9 +79,9 @@ def predict(message, history):
     response = retrieval_qa.run({"question": message})
     print(response)
 
-    responseDict = json.loads(response)
-    answer = responseDict["answer"]
-    sources = responseDict["sources"]
+    response_dict = json.loads(response)
+    answer = response_dict["answer"]
+    sources = response_dict["sources"]
 
     if isinstance(sources, list):
         sources = "\n".join(sources)

@@ -13,17 +13,20 @@ from langchain.vectorstores import Chroma
 
 from dotenv import load_dotenv
 
+
 def process_document(document, regex):
-    source = regex.sub('', document.metadata['source']).replace('ssl_','https://').replace('.html','').replace('_', '.').replace('=', '/').rstrip('-')
+    source = document.metadata['source']
+    source = regex.sub('', source).replace('ssl_', 'https://').replace('.html', '').replace('_', '.').replace('=', '/').rstrip('-')
     document.metadata["source"] = source
     return document
+
 
 def main():
     load_dotenv()
     scrape_dir = os.getenv("SCRAPE_DIR", './scrape')
     chroma_dir = os.getenv("CHROMA_DIR", './chroma')
     if os.path.exists(chroma_dir):
-        print("already embedded")
+        logging.info("already embedded")
         exit(0)
     try:
         loader = DirectoryLoader(
@@ -41,9 +44,8 @@ def main():
         documents = text_splitter.split_documents(data)
 
         regex = re.compile(r'scrape\\')
-
         with concurrent.futures.ProcessPoolExecutor() as executor:
-            documents = list(executor.map(process_document, documents, [regex]*len(documents)))
+            documents = list(executor.map(process_document, documents, [regex] * len(documents)))
 
         embedding_model = OpenAIEmbeddings(model="text-embedding-ada-002")
         db = Chroma.from_documents(documents, embedding_model, persist_directory=chroma_dir)
