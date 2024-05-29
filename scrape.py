@@ -17,6 +17,7 @@ logging.basicConfig(level=logging.INFO)
 parser = argparse.ArgumentParser()
 parser.add_argument("--site", type=str, required=True)
 parser.add_argument("--retries", type=int, default=0)
+parser.add_argument("--threads", type=int, default=20)
 
 
 def cleanUrl(url: str):
@@ -32,8 +33,7 @@ def download_and_save(url, user_agent='webscraper', retries=0, charset='utf-8'):
         gcontext = ssl.SSLContext()
         response = urllib.request.urlopen(request, context=gcontext)
         scrape_dir = os.getenv("SCRAPE_DIR", './scrape')
-        if not os.path.exists(scrape_dir):
-            os.mkdir(scrape_dir)
+
         cleaned_url = cleanUrl(url)
         cs = response.headers.get('char-set')
         if not cs:
@@ -53,7 +53,7 @@ def download_and_save(url, user_agent='webscraper', retries=0, charset='utf-8'):
                 download_and_save(url, retries - 1)
 
 
-def crawl_sitemap(url, retries=0):
+def crawl_sitemap(url, retries=0, threads=20):
     parsed_url = urlparse(url)
 
     # download site map xml
@@ -67,7 +67,7 @@ def crawl_sitemap(url, retries=0):
     links = re.findall(r'<loc>(.+?)</loc>', sitemap.text)
 
     # download each link
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
         for link in links:
             if parsed_url.netloc in link:
                 executor.submit(download_and_save, link, retries=retries)
@@ -80,9 +80,13 @@ def main():
     load_dotenv()
     args = parser.parse_args()
     retries = args.retries
+    threads = args.threads
     url = args.site
     logging.info('Crawling: %s', url)
-    crawl_sitemap(url, retries)
+    scrape_dir = os.getenv("SCRAPE_DIR", './scrape')
+    if not os.path.exists(scrape_dir):
+        os.mkdir(scrape_dir)
+    crawl_sitemap(url, retries, threads)
 
 
 if __name__ == "__main__":
