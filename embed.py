@@ -16,7 +16,11 @@ from dotenv import load_dotenv
 
 def process_document(document, regex):
     source = document.metadata['source']
-    source = regex.sub('', source).replace('ssl_', 'https://').replace('.html', '').replace('_', '.').replace('=', '/').rstrip('-')
+    source = (regex.sub('', source).replace('ssl_', 'https://')
+              .replace('.html', '')
+              .replace('_', '.')
+              .replace('=', '/')
+              .rstrip('-'))
     document.metadata["source"] = source
     return document
 
