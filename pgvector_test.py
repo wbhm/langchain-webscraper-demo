@@ -62,37 +62,39 @@ for i in range(len(data_frame.index)):
                              split_text[j],
                              data_frame['url'][i]])
 
+
 new_data_frame = pd.DataFrame(new_list, columns=['title', 'content', 'url'])
 new_data_frame.head()
 
-# load documents from Pandas dataframe for insertion into database
+#load documents from Pandas dataframe for insertion into database
 
 
 # page_content_column is the column name in the dataframe to create embeddings for
-loader = DataFrameLoader(new_data_frame, page_content_column='content')
+loader = DataFrameLoader(new_data_frame, page_content_column = 'content')
 docs = loader.load()
+
 
 embeddings = OpenAIEmbeddings()
 
 # Create OpenAI embedding using LangChain's OpenAIEmbeddings class
-query_string = "Postgresql is my favorite database"
+query_string = "PostgreSQL is my favorite database"
 embed = embeddings.embed_query(query_string)
-print(len(embed))  # Should be 1536, the dimensionality of OpenAI embeddings
-print(embed[:5])  # Should be a list of floats
+print(len(embed)) # Should be 1536, the dimensionality of OpenAI embeddings
+print(embed[:5]) # Should be a list of floats
 
 # Create a PGVector instance to house the documents and embeddings
 db = PGVector.from_documents(
-    documents=docs,
-    embedding=embeddings,
-    collection_name="blog_posts",
-    distance_strategy=DistanceStrategy.COSINE,
+    documents= docs,
+    embedding = embeddings,
+    collection_name= "blog_posts",
+    distance_strategy = DistanceStrategy.COSINE,
     connection_string=CONNECTION_STRING)
 
 # Query for which we want to find semantically similar documents
 query = "Tell me about how Edeva uses Timescale?"
 
 # Fetch the k=3 most similar documents
-docs = db.similarity_search(query, k=3)
+docs =  db.similarity_search(query, k=3)
 
 # Interact with a document returned from the similarity search on pgvector
 doc = docs[0]
@@ -110,9 +112,9 @@ print("Document url: " + doc_metadata['url'])
 # We specify the number of results we want to retrieve (k=3)
 retriever = db.as_retriever(
     search_kwargs={"k": 3}
-)
+    )
 
-llm = ChatOpenAI(temperature=0.0, model='gpt-3.5-turbo-16k')
+llm = ChatOpenAI(temperature = 0.0, model = 'gpt-3.5-turbo-16k')
 
 qa_stuff = RetrievalQA.from_chain_type(
     llm=llm,
@@ -121,11 +123,11 @@ qa_stuff = RetrievalQA.from_chain_type(
     verbose=True,
 )
 
-query = "How does Edeva use continuous aggregates?"
+query =  "How does Edeva use continuous aggregates?"
 
 response = qa_stuff.run(query)
 
-# add gradio code here to display chatbot interface
+ # add gradio code here to display chatbot interface
 
 print(response)
 
@@ -138,7 +140,7 @@ qa_stuff_with_sources = RetrievalQA.from_chain_type(
     verbose=True,
 )
 
-query = "How does Edeva use continuous aggregates?"
+query =  "How does Edeva use continuous aggregates?"
 
 # To run the query, we use a different syntax since we're returning more than just the response text
 responses = qa_stuff_with_sources({"query": query})
@@ -153,13 +155,14 @@ def construct_result_with_sources():
     result = responses['result']
     result += "\n\n"
     result += "Sources used:"
-    for item in range(len(source_content)):
+    for i in range(len(source_content)):
         result += "\n\n"
-        result += source_metadata[item]['title']
+        result += source_metadata[i]['title']
         result += "\n\n"
-        result += source_metadata[item]['url']
+        result += source_metadata[i]['url']
 
     return result
 
-
 print(construct_result_with_sources())
+
+
