@@ -5,6 +5,7 @@ import logging
 from lxml import etree
 from collections import defaultdict
 
+
 def count_file_types(sitemap_file_path):
     # Check if file exists
     if not os.path.isfile(sitemap_file_path):
@@ -36,6 +37,7 @@ def count_file_types(sitemap_file_path):
         print()
 
     return file_types
+
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
